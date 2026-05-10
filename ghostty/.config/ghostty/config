@@ -52,8 +52,8 @@ selection-foreground = #cdd6f4
 window-padding-x = 8
 window-padding-y = 6
 window-padding-balance = true
-window-decoration = none
-background-opacity = 0.20
+window-decoration = server
+background-opacity = 0.8
 background-blur-radius = 20
 
 # ── Terminal behaviour ──────────────────────────────────────────────────────
