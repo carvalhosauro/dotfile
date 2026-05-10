@@ -1,5 +1,4 @@
-export EDITOR="nvim"
-export VISUAL="$EDITOR"
+export EDITOR="vscode"
 export HISTFILE="$HOME/.zsh_history"
 export HISTSIZE=50000
 export SAVEHIST=50000
@@ -32,6 +31,6 @@ eval "$(zoxide init zsh)"
 eval "$(starship init zsh)"
 
 # ── tmux auto-start ───────────────────────────────────────────────────────────
-if [[ -z "$TMUX" && "$TERM_PROGRAM" != "cursor" && -z "$SSH_CLIENT" ]]; then
+if [[ -z "$TMUX" && "$TERM_PROGRAM" != "$EDITOR" && -z "$SSH_CLIENT" ]]; then
   tmux new-session -A -s main
 fi
