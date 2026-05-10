@@ -30,7 +30,3 @@ eval "$(~/.local/bin/mise activate zsh)"
 eval "$(zoxide init zsh)"
 eval "$(starship init zsh)"
 
-# ── tmux auto-start ───────────────────────────────────────────────────────────
-if [[ -z "$TMUX" && "$TERM_PROGRAM" != "$EDITOR" && -z "$SSH_CLIENT" ]]; then
-  tmux new-session -A -s main
-fi
