@@ -2,7 +2,7 @@
 set -e
 
 DOTFILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PACKAGES=(zsh alacritty starship mise tmux)
+PACKAGES=(zsh ghostty starship mise tmux)
 
 if ! command -v stow &>/dev/null; then
   echo "stow not found. Install: sudo dnf install stow"

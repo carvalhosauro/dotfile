@@ -37,7 +37,7 @@ if ! $ONLY_STOW && ! $SKIP_PACKAGES; then
   log "Installing system packages..."
   sudo dnf install -y \
     stow zsh tmux git curl wget \
-    alacritty fzf bat zoxide \
+    ghostty fzf bat zoxide \
     xclip wl-clipboard \
     gcc make unzip fontconfig
   ok "System packages installed"
@@ -152,7 +152,7 @@ if ! $SKIP_STOW; then
     "$HOME/.zshrc"
     "$HOME/.zimrc"
     "$HOME/.zshrcs"
-    "$HOME/.config/alacritty"
+    "$HOME/.config/ghostty"
     "$HOME/.config/zellij"
     "$HOME/.config/starship.toml"
     "$HOME/.config/mise"
