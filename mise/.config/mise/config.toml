@@ -1,0 +1,11 @@
+[tools]
+elixir = "latest"
+erlang = "latest"
+eza = "latest"
+go = "latest"
+php = "8.4"
+node = "latest"
+pnpm = "latest"
+python = "3.10"
+rust = "latest"
+usage = "latest"

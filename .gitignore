@@ -1,0 +1,21 @@
+# Claude Code / OMC (machine-specific state, not dotfiles)
+.claude/
+.omc/
+.code-review-graph/
+
+# Alacritty auto-backups
+*.bak
+
+# Local / machine-specific overrides
+*.local
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor swap files
+*.swp
+*.swo
+*~

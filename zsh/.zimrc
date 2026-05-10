@@ -1,0 +1,19 @@
+#
+# This is not sourced during shell startup and is only used to configure zimfw.
+#
+
+# ── core ──────────────────────────────────────────────────────────────────────
+zmodule environment
+zmodule input
+zmodule termtitle
+zmodule utility
+zmodule fzf
+
+# ── completion ────────────────────────────────────────────────────────────────
+zmodule zsh-users/zsh-completions --fpath src
+zmodule completion
+
+# ── last (order matters) ──────────────────────────────────────────────────────
+zmodule zsh-users/zsh-syntax-highlighting
+zmodule zsh-users/zsh-history-substring-search
+zmodule zsh-users/zsh-autosuggestions

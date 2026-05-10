@@ -1,0 +1,50 @@
+[font]
+size = 12.5
+
+normal = { family = "FiraCode Nerd Font Propo", style = "Regular" }
+bold = { family = "FiraCode Nerd Font Propo", style = "Bold" }
+italic = { family = "Victor Mono", style = "Italic" }
+bold_italic = { family = "Victor Mono", style = "Bold Italic" }
+
+offset = { x = 0, y = 0 }
+glyph_offset = { x = 0, y = 0 }
+
+[colors]
+draw_bold_text_with_bright_colors = true
+
+[colors.primary]
+background = "#0d1117"
+foreground = "#c9d1d9"
+
+[colors.cursor]
+text = "#0d1117"
+cursor = "#c9d1d9"
+
+[colors.selection]
+text = "#c9d1d9"
+background = "#1f2428"
+
+[colors.normal]
+black   = "#484f58"
+red     = "#ff7b72"
+green   = "#3fb950"
+yellow  = "#d29922"
+blue    = "#58a6ff"
+magenta = "#bc8cff"
+cyan    = "#39c5cf"
+white   = "#b1bac4"
+
+[colors.bright]
+black   = "#6e7681"
+red     = "#ffa198"
+green   = "#56d364"
+yellow  = "#e3b341"
+blue    = "#79c0ff"
+magenta = "#d2a8ff"
+cyan    = "#56d4dd"
+white   = "#f0f6fc"
+
+[[keyboard.bindings]]
+key = "Return"
+mods = "Shift"
+chars = "\u001B\r"
