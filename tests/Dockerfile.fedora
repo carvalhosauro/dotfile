@@ -1,0 +1,24 @@
+FROM fedora:41
+
+RUN dnf install -y sudo curl git zsh unzip && dnf clean all
+
+# Create test user with sudo
+RUN useradd -m -s /bin/bash testuser \
+    && echo "testuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER testuser
+WORKDIR /home/testuser
+
+COPY --chown=testuser:testuser . /home/testuser/dotfiles
+
+RUN cd /home/testuser/dotfiles && ./bootstrap.sh --skip-fonts
+
+# Verify key results
+ENV PATH="/home/testuser/.local/bin:${PATH}"
+RUN set -x \
+    && command -v starship \
+    && command -v mise \
+    && ls -la /home/testuser/.zshrc \
+    && ls -la /home/testuser/.config/tmux/tmux.conf \
+    && ls -la /home/testuser/.config/starship.toml \
+    && echo "=== ALL CHECKS PASSED ==="

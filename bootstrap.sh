@@ -1,20 +1,39 @@
 #!/usr/bin/env bash
-# bootstrap.sh — full system setup from a fresh Fedora install
+# bootstrap.sh — idempotent system setup (Fedora / Debian / Ubuntu / WSL)
 set -euo pipefail
 
 DOTFILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_DIR="$HOME/.dotfile-backup-$(date +%Y%m%d-%H%M%S)"
 
-# ── colors ───────────────────────────────────────────────────────────────────
-C_BLUE='\033[0;34m'; C_GREEN='\033[0;32m'
-C_YELLOW='\033[1;33m'; C_RED='\033[0;31m'; C_NC='\033[0m'
-log()  { echo -e "${C_BLUE}==> ${C_NC}$*"; }
-ok()   { echo -e "${C_GREEN} ✓ ${C_NC}$*"; }
-warn() { echo -e "${C_YELLOW} ! ${C_NC}$*"; }
-die()  { echo -e "${C_RED} ✗ ${C_NC}$*" >&2; exit 1; }
-skip() { echo -e "${C_YELLOW} ~ ${C_NC}$* (already installed, skipping)"; }
+# ── helpers ─────────────────────────────────────────────────────────────────
+BLUE='\033[0;34m'; GREEN='\033[0;32m'
+YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+log()  { echo -e "${BLUE}==> ${NC}$*"; }
+ok()   { echo -e "${GREEN} ✓  ${NC}$*"; }
+warn() { echo -e "${YELLOW} !  ${NC}$*"; }
+die()  { echo -e "${RED} ✗  ${NC}$*" >&2; exit 1; }
+skip() { echo -e "${YELLOW} ~  ${NC}$* (skip)"; }
+has()  { command -v "$1" &>/dev/null; }
 
-# ── flags ────────────────────────────────────────────────────────────────────
+# ── detect environment ─────────────────────────────────────────────────────
+if [[ -f /etc/os-release ]]; then
+  . /etc/os-release
+  case "$ID" in
+    fedora)        DISTRO="fedora" ;;
+    debian|ubuntu) DISTRO="debian" ;;
+    *)             die "Unsupported distro: $ID" ;;
+  esac
+else
+  die "Cannot detect distro (/etc/os-release not found)"
+fi
+
+IS_WSL=false
+if [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null; then
+  IS_WSL=true
+fi
+
+log "Environment: $DISTRO${IS_WSL:+ (WSL)}"
+
+# ── flags ───────────────────────────────────────────────────────────────────
 SKIP_PACKAGES=false; SKIP_FONTS=false; SKIP_STOW=false; ONLY_STOW=false
 for arg in "$@"; do
   case $arg in
@@ -22,172 +41,149 @@ for arg in "$@"; do
     --skip-fonts)    SKIP_FONTS=true ;;
     --skip-stow)     SKIP_STOW=true ;;
     --only-stow)     ONLY_STOW=true ;;
-    --help)
-      echo "Usage: $0 [--skip-packages] [--skip-fonts] [--skip-stow] [--only-stow]"
-      exit 0 ;;
+    --help) echo "Usage: $0 [--skip-packages] [--skip-fonts] [--skip-stow] [--only-stow]"; exit 0 ;;
   esac
 done
 
-[[ -f /etc/fedora-release ]] || die "Script designed for Fedora (dnf required)"
+pkg_install() {
+  case "$DISTRO" in
+    fedora) sudo dnf install -y "$@" ;;
+    debian) sudo apt install -y "$@" ;;
+  esac
+}
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 1. SYSTEM PACKAGES
-# ═══════════════════════════════════════════════════════════════════════════════
+install_if_missing() {
+  local name="$1"; shift
+  if has "$name"; then
+    skip "$name"
+  else
+    log "Installing $name..."
+    "$@"
+    ok "$name"
+  fi
+}
+
+# ── 1. system packages ─────────────────────────────────────────────────────
 if ! $ONLY_STOW && ! $SKIP_PACKAGES; then
-  log "Installing system packages..."
-  sudo dnf install -y \
-    stow zsh tmux git curl wget \
-    ghostty fzf bat zoxide \
-    xclip wl-clipboard \
-    gcc make unzip fontconfig
-  ok "System packages installed"
+  [[ "$DISTRO" == "debian" ]] && sudo apt update -qq
+
+  PKGS=(stow zsh tmux git curl wget fzf bat zoxide gcc make unzip fontconfig)
+
+  if ! $IS_WSL; then
+    PKGS+=(xclip wl-clipboard)
+    [[ "$DISTRO" == "fedora" ]] && PKGS+=(ghostty)
+  fi
+
+  pkg_install "${PKGS[@]}"
+
+  # ghostty: not in Debian repos
+  if ! $IS_WSL && [[ "$DISTRO" == "debian" ]] && ! has ghostty; then
+    warn "Ghostty: install manually → https://ghostty.org/docs/install"
+  fi
+
+  # Debian ships bat as batcat
+  if [[ "$DISTRO" == "debian" ]] && has batcat && ! has bat; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
+    ok "Symlink: bat → batcat"
+  fi
+
+  ok "System packages done"
 fi
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 2. STARSHIP
-# ═══════════════════════════════════════════════════════════════════════════════
+# ── 2. standalone tools (curl-based) ───────────────────────────────────────
 if ! $ONLY_STOW && ! $SKIP_PACKAGES; then
-  if command -v starship &>/dev/null; then
-    skip "starship"
-  else
-    log "Installing starship..."
-    curl -sS https://starship.rs/install.sh | sh -s -- --yes
-    ok "starship installed"
-  fi
-fi
+  install_if_missing starship \
+    sh -c 'curl -sS https://starship.rs/install.sh | sh -s -- --yes'
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 3. MISE
-# ═══════════════════════════════════════════════════════════════════════════════
-if ! $ONLY_STOW && ! $SKIP_PACKAGES; then
-  if command -v mise &>/dev/null || [[ -f "$HOME/.local/bin/mise" ]]; then
-    skip "mise"
-  else
-    log "Installing mise..."
-    curl https://mise.run | sh
-    ok "mise installed"
-  fi
+  install_if_missing mise \
+    sh -c 'curl -fsSL https://mise.run | sh'
 
   MISE="$HOME/.local/bin/mise"
   if [[ -f "$MISE" ]]; then
-    log "Installing mise tools (elixir, erlang, go, node, rust, python, eza...)..."
-    # activate mise for this session before installing tools
+    log "Installing mise tools..."
     eval "$("$MISE" activate bash)"
     "$MISE" install
-    ok "mise tools installed"
+    ok "Mise tools"
   fi
 fi
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 4. FONTS — FiraCode Nerd Font + Victor Mono
-# ═══════════════════════════════════════════════════════════════════════════════
-if ! $ONLY_STOW && ! $SKIP_FONTS; then
+# ── 3. fonts ────────────────────────────────────────────────────────────────
+if ! $ONLY_STOW && ! $SKIP_FONTS && ! $IS_WSL; then
   FONT_DIR="$HOME/.local/share/fonts"
   mkdir -p "$FONT_DIR"
 
-  install_nerd_font() {
-    local name="$1" file="$2"
+  install_font() {
+    local name="$1" url="$2" tmp="/tmp/${1}.zip"
     if fc-list | grep -qi "$name"; then
-      skip "font: $name"
-    else
-      log "Downloading font: $name..."
-      local url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${file}"
-      curl -fsSL "$url" -o "/tmp/${file}"
-      unzip -qo "/tmp/${file}" -d "$FONT_DIR/$name" '*.ttf' '*.otf' 2>/dev/null || true
-      rm "/tmp/${file}"
-      ok "font installed: $name"
+      skip "font: $name"; return
     fi
+    log "Downloading font: $name..."
+    curl -fsSL "$url" -o "$tmp"
+    unzip -qo "$tmp" -d "$FONT_DIR/$name" '*.ttf' '*.otf' 2>/dev/null || true
+    rm "$tmp"
+    ok "font: $name"
   }
 
-  install_nerd_font "FiraCode" "FiraCode.zip"
-
-  # Victor Mono (not in nerd-fonts, separate download)
-  if fc-list | grep -qi "Victor Mono"; then
-    skip "font: Victor Mono"
-  else
-    log "Downloading font: Victor Mono..."
-    curl -fsSL "https://rubjo.github.io/victor-mono/VictorMonoAll.zip" -o /tmp/VictorMono.zip
-    unzip -qo /tmp/VictorMono.zip -d "$FONT_DIR/VictorMono" '*.ttf' 2>/dev/null || true
-    rm /tmp/VictorMono.zip
-    ok "font installed: Victor Mono"
-  fi
+  install_font "FiraCode" "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraCode.zip"
+  install_font "VictorMono" "https://rubjo.github.io/victor-mono/VictorMonoAll.zip"
 
   fc-cache -f "$FONT_DIR"
   ok "Font cache refreshed"
 fi
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 5. ZSH AS DEFAULT SHELL
-# ═══════════════════════════════════════════════════════════════════════════════
+# ── 4. shell setup ─────────────────────────────────────────────────────────
 if ! $ONLY_STOW; then
   ZSH_PATH="$(command -v zsh)"
   if [[ "$SHELL" == "$ZSH_PATH" ]]; then
-    skip "zsh default shell"
+    skip "zsh as default shell"
   else
-    log "Setting zsh as default shell..."
-    chsh -s "$ZSH_PATH"
-    ok "Default shell → zsh (takes effect on next login)"
+    log "Setting default shell → zsh..."
+    if sudo -n chsh -s "$ZSH_PATH" "$(whoami)" 2>/dev/null || chsh -s "$ZSH_PATH" 2>/dev/null; then
+      ok "Default shell → zsh (next login)"
+    else
+      warn "Could not change shell automatically. Run: chsh -s $ZSH_PATH"
+    fi
   fi
-fi
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 6. ZIM FRAMEWORK
-# ═══════════════════════════════════════════════════════════════════════════════
-if ! $ONLY_STOW; then
-  ZIM_HOME="${ZDOTDIR:-$HOME}/.zim"
+  export ZIM_HOME="${ZDOTDIR:-$HOME}/.zim"
   if [[ -d "$ZIM_HOME" ]]; then
-    skip "Zim"
+    skip "zim"
   else
-    log "Installing Zim framework..."
-    ZIM_HOME="$ZIM_HOME" curl -fsSL https://raw.githubusercontent.com/zimfw/zimfw/master/zimfw.zsh | zsh -c 'source /dev/stdin --install'
-    ok "Zim installed"
+    log "Installing zim..."
+    curl -fsSL https://raw.githubusercontent.com/zimfw/zimfw/master/zimfw.zsh -o /tmp/zimfw.zsh
+    zsh -c "source /tmp/zimfw.zsh install" || true
+    rm -f /tmp/zimfw.zsh
+    [[ -d "$ZIM_HOME" ]] && ok "zim" || warn "Zim install may need manual setup"
   fi
 fi
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 7. BACKUP EXISTING CONFIGS
-# ═══════════════════════════════════════════════════════════════════════════════
+# ── 5. backup & stow ───────────────────────────────────────────────────────
 if ! $SKIP_STOW; then
-  TARGETS=(
-    "$HOME/.zshrc"
-    "$HOME/.zimrc"
-    "$HOME/.zshrcs"
-    "$HOME/.config/ghostty"
-    "$HOME/.config/zellij"
-    "$HOME/.config/starship.toml"
-    "$HOME/.config/mise"
-    "$HOME/.config/tmux"
+  BACKUP_TARGETS=(
+    "$HOME/.zshrc" "$HOME/.zimrc" "$HOME/.zshrcs"
+    "$HOME/.config/ghostty" "$HOME/.config/zellij"
+    "$HOME/.config/starship.toml" "$HOME/.config/mise" "$HOME/.config/tmux"
   )
 
-  needs_backup=false
-  for target in "${TARGETS[@]}"; do
-    [[ -e "$target" && ! -L "$target" ]] && needs_backup=true && break
+  backed_up=false
+  for target in "${BACKUP_TARGETS[@]}"; do
+    if [[ -e "$target" && ! -L "$target" ]]; then
+      $backed_up || { BACKUP_DIR="$HOME/.dotfile-backup-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$BACKUP_DIR"; }
+      cp -r "$target" "$BACKUP_DIR/"
+      rm -rf "$target"
+      warn "Backed up: $target"
+      backed_up=true
+    fi
   done
+  $backed_up && ok "Backup → $BACKUP_DIR"
 
-  if $needs_backup; then
-    log "Backing up existing configs to $BACKUP_DIR..."
-    mkdir -p "$BACKUP_DIR"
-    for target in "${TARGETS[@]}"; do
-      if [[ -e "$target" && ! -L "$target" ]]; then
-        cp -r "$target" "$BACKUP_DIR/"
-        rm -rf "$target"
-        warn "backed up: $target"
-      fi
-    done
-    ok "Backup done → $BACKUP_DIR"
-  fi
-
-  # ═════════════════════════════════════════════════════════════════════════════
-  # 8. STOW
-  # ═════════════════════════════════════════════════════════════════════════════
-  log "Linking dotfiles via stow..."
+  log "Linking dotfiles..."
   "$DOTFILE_DIR/stow-all.sh"
   ok "Dotfiles linked"
 fi
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ── done ────────────────────────────────────────────────────────────────────
 echo ""
-echo -e "${C_GREEN}Bootstrap complete!${C_NC}"
-echo "  → Restart shell or run: exec zsh"
-[[ -n "${BACKUP_DIR:-}" && -d "${BACKUP_DIR:-}" ]] && \
-  echo "  → Old configs backed up at: $BACKUP_DIR"
+echo -e "${GREEN}Bootstrap complete!${NC}"
+echo "  → exec zsh"
