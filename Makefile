@@ -12,7 +12,7 @@ stow: ## Link dotfiles only
 	./stow-all.sh
 
 unstow: ## Unlink all dotfiles
-	@for pkg in zsh starship mise tmux ghostty alacritty; do \
+	@for pkg in zsh starship mise tmux nvim ghostty alacritty; do \
 		if [ -d "$(DOTFILE_DIR)/$$pkg" ]; then \
 			echo "unstowing $$pkg..."; \
 			stow --dir="$(DOTFILE_DIR)" --target="$(HOME)" --delete $$pkg 2>/dev/null || true; \

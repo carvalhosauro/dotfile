@@ -2,7 +2,7 @@
 set -e
 
 DOTFILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PACKAGES=(zsh starship mise tmux)
+PACKAGES=(zsh starship mise tmux nvim)
 
 # GUI packages — skip on WSL
 if ! [[ -n "${WSL_DISTRO_NAME:-}" ]] && ! grep -qi microsoft /proc/version 2>/dev/null; then

@@ -67,7 +67,7 @@ install_if_missing() {
 if ! $ONLY_STOW && ! $SKIP_PACKAGES; then
   [[ "$DISTRO" == "debian" ]] && sudo apt update -qq
 
-  PKGS=(stow zsh tmux git curl wget fzf bat zoxide gcc make unzip fontconfig)
+  PKGS=(stow zsh tmux git curl wget fzf bat zoxide gcc make unzip fontconfig ripgrep fd-find)
 
   if ! $IS_WSL; then
     PKGS+=(xclip wl-clipboard)
