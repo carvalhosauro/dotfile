@@ -91,6 +91,7 @@ gtidy() {
 # ── docker ─────────────────────────────────────────────────────────────
 alias dcstop="docker container stop"
 alias dcstop-all="docker container stop $(docker container ls -q)"
+alias dps="docker ps"
 
 alias dcup="docker compose up"
 alias dcdn="docker compose down"

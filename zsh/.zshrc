@@ -27,6 +27,7 @@ source ${ZIM_HOME}/init.zsh
 source ~/.zshrcs/aliases.zsh
 
 eval "$(~/.local/bin/mise activate zsh)"
+eval "$(wm completions zsh)"
 eval "$(zoxide init zsh)"
 eval "$(starship init zsh)"
 
