@@ -49,16 +49,16 @@ gwt() {
 
   local folder="${branch//\//-}"
   local target="../$folder"
-  local origin
-  origin="$(git symbolic-ref --short HEAD 2>/dev/null)"
 
-  echo "→ atualizando '$base'..."
-  git checkout "$base" && git pull origin "$base" || { echo "falha ao atualizar '$base'" >&2; return 1 }
+  # fetch em vez de checkout+pull: não mexe na branch atual e funciona
+  # mesmo com a base aberta em outra worktree
+  echo "→ buscando '$base'..."
+  git fetch origin "$base" || { echo "falha ao buscar '$base'" >&2; return 1 }
 
   echo "→ criando worktree '$target' (branch: $branch)..."
-  git worktree add -b "$branch" "$target" "$base" || {
+  # --no-track: sem ele a branch nova rastrearia origin/$base e git push reclamaria
+  git worktree add --no-track -b "$branch" "$target" "origin/$base" || {
     echo "falha ao criar worktree" >&2
-    [[ -n "$origin" ]] && git checkout "$origin" 2>/dev/null
     return 1
   }
 
@@ -72,8 +72,44 @@ gwt() {
     done
   fi
 
-  [[ -n "$origin" ]] && git checkout "$origin" 2>/dev/null
   echo "✓ worktree em: $target ($branch ← $base)"
+}
+
+# clona repo no layout worktree-first: <pasta>/.bare/ + <pasta>/main/
+# uso: gclone <url-git> [pasta]
+gclone() {
+  if [[ "$1" == "--help" || "$1" == "-h" || -z "$1" ]]; then
+    echo "uso: gclone <url-git> [pasta]"
+    echo ""
+    echo "  clona bare em <pasta>/.bare e cria worktree main/"
+    echo "  pasta default: nome do repo na URL"
+    echo "  depois: cd <pasta>/main && gwt <branch>"
+    return 0
+  fi
+
+  local url="$1"
+  local dir="${2:-$(basename "$url" .git)}"
+
+  [[ -e "$dir" ]] && { echo "'$dir' já existe" >&2; return 1 }
+
+  echo "→ clonando bare em '$dir/.bare'..."
+  git clone --bare "$url" "$dir/.bare" || return 1
+
+  echo "gitdir: ./.bare" > "$dir/.git"
+
+  # clone bare não configura refspec de fetch — sem isso, fetch não atualiza origin/*
+  git -C "$dir" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+  git -C "$dir" fetch origin --quiet || { echo "falha no fetch inicial" >&2; return 1 }
+
+  # branch default do remoto (main, master, dev...)
+  local def
+  def="$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null)" || def="main"
+
+  echo "→ criando worktree main/ (branch: $def)..."
+  git -C "$dir" worktree add main "$def" || return 1
+  git -C "$dir/main" branch --set-upstream-to="origin/$def" "$def" 2>/dev/null
+
+  echo "✓ pronto: $dir/main ($def)"
 }
 
 # deleta branches merged localmente
@@ -86,6 +122,28 @@ gtidy() {
     echo "Deleting:\n$branches"
     echo "$branches" | xargs git branch -d
   fi
+}
+
+
+# ── editor ─────────────────────────────────────────────────────────────
+function ag() {
+  local exe="/mnt/c/Users/Gustavo Carvalho/AppData/Local/Programs/Antigravity/Antigravity.exe"
+
+  if [ $# -eq 0 ]; then
+    "$exe" --remote "wsl+Ubuntu-24.04" "$(pwd)" &
+  else
+    local args=("--remote" "wsl+Ubuntu-24.04")
+    for arg in "$@"; do
+      if [[ -e "$arg" || "$arg" == /* || "$arg" == .* ]]; then
+        args+=("$(realpath "$arg")")
+      else
+        args+=("$arg")
+      fi
+    done
+    "$exe" "${args[@]}" &
+  fi
+
+  disown
 }
 
 # ── docker ─────────────────────────────────────────────────────────────
