@@ -7,11 +7,11 @@ zmodule environment
 zmodule input
 zmodule termtitle
 zmodule utility
-zmodule fzf
 
 # ── completion ────────────────────────────────────────────────────────────────
 zmodule zsh-users/zsh-completions --fpath src
 zmodule completion
+zmodule fzf
 
 # ── last (order matters) ──────────────────────────────────────────────────────
 zmodule zsh-users/zsh-syntax-highlighting

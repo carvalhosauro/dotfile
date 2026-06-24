@@ -113,43 +113,63 @@ gclone() {
 }
 
 # deleta branches merged localmente
+# branches em uso por worktree não são deletadas: aponta o caminho e avisa
+# que já podem ser removidas (pois estão mergeadas)
 gtidy() {
-  local branches
-  branches=$(git branch --merged | grep -vE '^\*|main|master|dev')
-  if [[ -z "$branches" ]]; then
+  # mapa branch -> worktree path (porcelain: linhas "branch refs/heads/<name>")
+  local -A wt_path
+  local cur_wt="" line key
+  while IFS= read -r line; do
+    case "$line" in
+      worktree\ *) cur_wt="${line#worktree }" ;;
+      branch\ refs/heads/*) key="${line#branch refs/heads/}"; wt_path[$key]="$cur_wt" ;;
+    esac
+  done < <(git worktree list --porcelain)
+
+  # branches merged, sem marcadores (* / +) e sem as default
+  local -a merged
+  merged=("${(@f)$(git branch --format='%(refname:short)' --merged \
+    | grep -vE '^(main|master|dev)$')}")
+
+  local -a to_delete locked
+  local b
+  for b in $merged; do
+    [[ -z "$b" ]] && continue
+    if [[ -n "${wt_path[$b]}" ]]; then
+      locked+=("$b -> ${wt_path[$b]}")
+    else
+      to_delete+=("$b")
+    fi
+  done
+
+  if (( ${#locked} )); then
+    echo "Merged mas em uso por worktree (já pode remover a worktree):"
+    for b in $locked; do echo "  ⚠ $b"; done
+    echo "  remover com: git worktree remove <path>"
+    echo ""
+  fi
+
+  if (( ${#to_delete} == 0 )); then
     echo "Nothing to delete."
   else
-    echo "Deleting:\n$branches"
-    echo "$branches" | xargs git branch -d
+    echo "Deleting:"
+    for b in $to_delete; do echo "  $b"; done
+    git branch -d $to_delete
   fi
 }
 
-
-# ── editor ─────────────────────────────────────────────────────────────
-function ag() {
-  local exe="/mnt/c/Users/Gustavo Carvalho/AppData/Local/Programs/Antigravity/Antigravity.exe"
-
-  if [ $# -eq 0 ]; then
-    "$exe" --remote "wsl+Ubuntu-24.04" "$(pwd)" &
-  else
-    local args=("--remote" "wsl+Ubuntu-24.04")
-    for arg in "$@"; do
-      if [[ -e "$arg" || "$arg" == /* || "$arg" == .* ]]; then
-        args+=("$(realpath "$arg")")
-      else
-        args+=("$arg")
-      fi
-    done
-    "$exe" "${args[@]}" &
-  fi
-
-  disown
+# lista branches ainda NÃO mergeadas na default
+gunmerged() {
+  git branch --format='%(refname:short)' --no-merged \
+    | grep -vE '^(main|master|dev)$'
 }
 
 # ── docker ─────────────────────────────────────────────────────────────
-alias dcstop="docker container stop"
-alias dcstop-all="docker container stop $(docker container ls -q)"
 alias dps="docker ps"
+alias dcstop="docker container stop"
+dcstop-all() {
+    docker container stop $(docker container ls -q)
+}
 
 alias dcup="docker compose up"
 alias dcdn="docker compose down"
