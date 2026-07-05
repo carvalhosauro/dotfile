@@ -24,9 +24,13 @@ if [[ ! ${ZIM_HOME}/init.zsh -nt ${ZIM_CONFIG_FILE:-${ZDOTDIR:-${HOME}}/.zimrc} 
 fi
 source ${ZIM_HOME}/init.zsh
 
+bindkey "${terminfo[kcuu1]}" history-substring-search-up
+bindkey "${terminfo[kcud1]}" history-substring-search-down
+
 source ~/.zshrcs/aliases.zsh
 
 eval "$(~/.local/bin/mise activate zsh)"
+eval "$(~/.local/bin/mise completion zsh)"
 eval "$(zoxide init zsh)"
 eval "$(starship init zsh)"
 
