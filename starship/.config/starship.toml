@@ -19,6 +19,7 @@ right_format = """
 $singularity\
 $kubernetes\
 $directory\
+$custom.mise\
 $vcsh\
 $fossil_branch\
 $git_branch\
@@ -326,3 +327,23 @@ unknown_msg = '[◌](bold dimmed yellow)'
 [spack]
 symbol = "◇ "
 format = " spack [$symbol$environment]($style)"
+
+[custom.mise]
+description = "mise: env ativo ou pins locais (fora do config global)"
+shell = ["bash", "-c"]
+command = '''
+if [[ -n "${MISE_ENV:-}" ]]; then
+  printf '%s' "$MISE_ENV"
+  exit 0
+fi
+mise ls --current 2>/dev/null \
+  | awk '$3 !~ /\/\.config\/mise\/config\.toml$/ && $2 !~ /\(missing\)/ {
+      split($2, v, " "); printf "%s@%s ", $1, v[1]
+    }' \
+  | sed 's/ $//'
+'''
+when = "bash -c '[[ -n \"${MISE_ENV:-}\" ]] || [[ -f mise.toml || -f .mise.toml || -f .tool-versions ]]'"
+format = " [$symbol$output]($style)"
+symbol = "⬢ "
+style = "bold 208"
+ignore_timeout = true

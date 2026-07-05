@@ -1,8 +1,20 @@
-export EDITOR="vscode"
+export PATH="$HOME/.local/bin:$PATH"
+
+# auto-tmux: sessão "main" em terminais locais (Ghostty, Alacritty, etc.)
+# guards: interativo, fora do tmux, fora de SSH
+if [[ -o interactive ]] && [[ -z "${TMUX:-}" ]] && [[ -z "${SSH_CONNECTION:-}" ]] \
+    && command -v tmux &>/dev/null; then
+  if tmux has-session -t main 2>/dev/null; then
+    exec tmux attach-session -t main \; new-window -c "${PWD:-$HOME}"
+  else
+    exec tmux new-session -s main -c "${PWD:-$HOME}"
+  fi
+fi
+
 export HISTFILE="$HOME/.zsh_history"
 export HISTSIZE=50000
 export SAVEHIST=50000
-export PATH="$HOME/.local/bin:$PATH"
+export EDITOR="cursor"
 
 setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
