@@ -1,11 +1,3 @@
-# ── navigation ────────────────────────────────────────────────────────────────
-alias ls="eza --icons --group-directories-first"
-alias ll="eza -lha --icons --git --group-directories-first"
-alias tree="eza --tree --icons --group-directories-first"
-alias cat="bat --paging=never"
-alias reload="exec zsh"
-
-# ── git ───────────────────────────────────────────────────────────────────────
 alias g="git"
 alias ga="git add"
 alias gc="git commit"
@@ -18,12 +10,10 @@ alias gp="git push"
 alias gpo="git push origin"
 alias glog="git log --oneline --graph --decorate"
 
-# deleta branches remotamente removidos
 alias gprune="git fetch -p && git branch -vv | grep ': gone]' | awk '{print \$1}' | xargs -r git branch -d"
 
 # cria git worktree a partir de branch base
 # uso: gwt <branch> [--base BRANCH] [--no-copy]
-# GWT_COPY_FILES para sobrescrever arquivos copiados (default: .env.local)
 gwt() {
   if [[ "$1" == "--help" || "$1" == "-h" || -z "$1" ]]; then
     echo "uso: gwt <branch> [--base BRANCH] [--no-copy]"
@@ -50,13 +40,10 @@ gwt() {
   local folder="${branch//\//-}"
   local target="../$folder"
 
-  # fetch em vez de checkout+pull: não mexe na branch atual e funciona
-  # mesmo com a base aberta em outra worktree
   echo "→ buscando '$base'..."
   git fetch origin "$base" || { echo "falha ao buscar '$base'" >&2; return 1 }
 
   echo "→ criando worktree '$target' (branch: $branch)..."
-  # --no-track: sem ele a branch nova rastrearia origin/$base e git push reclamaria
   git worktree add --no-track -b "$branch" "$target" "origin/$base" || {
     echo "falha ao criar worktree" >&2
     return 1
@@ -76,7 +63,6 @@ gwt() {
 }
 
 # clona repo no layout worktree-first: <pasta>/.bare/ + <pasta>/main/
-# uso: gclone <url-git> [pasta]
 gclone() {
   if [[ "$1" == "--help" || "$1" == "-h" || -z "$1" ]]; then
     echo "uso: gclone <url-git> [pasta]"
@@ -97,11 +83,9 @@ gclone() {
 
   echo "gitdir: ./.bare" > "$dir/.git"
 
-  # clone bare não configura refspec de fetch — sem isso, fetch não atualiza origin/*
   git -C "$dir" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
   git -C "$dir" fetch origin --quiet || { echo "falha no fetch inicial" >&2; return 1 }
 
-  # branch default do remoto (main, master, dev...)
   local def
   def="$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null)" || def="main"
 
@@ -112,11 +96,7 @@ gclone() {
   echo "✓ pronto: $dir/main ($def)"
 }
 
-# deleta branches merged localmente
-# branches em uso por worktree não são deletadas: aponta o caminho e avisa
-# que já podem ser removidas (pois estão mergeadas)
 gtidy() {
-  # mapa branch -> worktree path (porcelain: linhas "branch refs/heads/<name>")
   local -A wt_path
   local cur_wt="" line key
   while IFS= read -r line; do
@@ -126,7 +106,6 @@ gtidy() {
     esac
   done < <(git worktree list --porcelain)
 
-  # branches merged, sem marcadores (* / +) e sem as default
   local -a merged
   merged=("${(@f)$(git branch --format='%(refname:short)' --merged \
     | grep -vE '^(main|master|dev)$')}")
@@ -158,19 +137,7 @@ gtidy() {
   fi
 }
 
-# lista branches ainda NÃO mergeadas na default
 gunmerged() {
   git branch --format='%(refname:short)' --no-merged \
     | grep -vE '^(main|master|dev)$'
 }
-
-# ── docker ─────────────────────────────────────────────────────────────
-alias dps="docker ps"
-alias dcstop="docker container stop"
-dcstop-all() {
-    docker container stop $(docker container ls -q)
-}
-
-alias dcup="docker compose up"
-alias dcdn="docker compose down"
-alias dce="docker compose exec -ti"

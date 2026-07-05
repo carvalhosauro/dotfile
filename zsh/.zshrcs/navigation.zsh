@@ -1,0 +1,5 @@
+alias ls="eza --icons --group-directories-first"
+alias ll="eza -lha --icons --git --group-directories-first"
+alias tree="eza --tree --icons --group-directories-first"
+alias cat="bat --paging=never"
+alias reload="exec zsh"
