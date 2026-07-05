@@ -30,3 +30,5 @@ eval "$(~/.local/bin/mise activate zsh)"
 eval "$(zoxide init zsh)"
 eval "$(starship init zsh)"
 
+
+export PATH=/home/gustavo/.opencode/bin:$PATH
