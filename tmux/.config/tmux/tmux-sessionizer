@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# tmux-sessionizer — fuzzy-jump to a project under ~/repo as a tmux session.
+# Bound to: prefix + o  (see tmux.conf). Creates the session if missing,
+# otherwise switches/attaches to the existing one.
+
+# Ensure mise-managed tools (fzf) resolve when launched from a tmux popup,
+# where the interactive shell's `mise activate` hasn't run.
+export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH"
+
+if [[ $# -eq 1 ]]; then
+    selected=$1
+else
+    selected=$(find ~/repo -mindepth 1 -maxdepth 3 \
+        \( -name .git -o -name .omc -o -name node_modules \) -prune \
+        -o -type d -print 2>/dev/null | fzf --prompt='repo> ' --height=100%)
+fi
+
+[[ -z $selected ]] && exit 0
+
+selected_name=$(basename "$selected" | tr '. ' '__')
+tmux_running=$(pgrep tmux)
+
+# No tmux server at all -> start one attached.
+if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
+    tmux new-session -s "$selected_name" -c "$selected"
+    exit 0
+fi
+
+# Session doesn't exist yet -> create it detached.
+if ! tmux has-session -t="$selected_name" 2>/dev/null; then
+    tmux new-session -ds "$selected_name" -c "$selected"
+fi
+
+# Inside tmux -> switch; outside -> attach.
+if [[ -z $TMUX ]]; then
+    tmux attach -t "$selected_name"
+else
+    tmux switch-client -t "$selected_name"
+fi
