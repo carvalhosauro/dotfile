@@ -12,37 +12,38 @@ glyph_offset = { x = 0, y = 0 }
 [colors]
 draw_bold_text_with_bright_colors = true
 
+# Catppuccin Mocha — synced with ghostty/.config/ghostty/config
 [colors.primary]
-background = "#0d1117"
-foreground = "#c9d1d9"
+background = "#1e1e2e"
+foreground = "#cdd6f4"
 
 [colors.cursor]
-text = "#0d1117"
-cursor = "#c9d1d9"
+text = "#1e1e2e"
+cursor = "#f5e0dc"
 
 [colors.selection]
-text = "#c9d1d9"
-background = "#1f2428"
+text = "#cdd6f4"
+background = "#45475a"
 
 [colors.normal]
-black   = "#484f58"
-red     = "#ff7b72"
-green   = "#3fb950"
-yellow  = "#d29922"
-blue    = "#58a6ff"
-magenta = "#bc8cff"
-cyan    = "#39c5cf"
-white   = "#b1bac4"
+black   = "#45475a"
+red     = "#f38ba8"
+green   = "#a6e3a1"
+yellow  = "#f9e2af"
+blue    = "#89b4fa"
+magenta = "#f5c2e7"
+cyan    = "#94e2d5"
+white   = "#bac2de"
 
 [colors.bright]
-black   = "#6e7681"
-red     = "#ffa198"
-green   = "#56d364"
-yellow  = "#e3b341"
-blue    = "#79c0ff"
-magenta = "#d2a8ff"
-cyan    = "#56d4dd"
-white   = "#f0f6fc"
+black   = "#585b70"
+red     = "#f38ba8"
+green   = "#a6e3a1"
+yellow  = "#f9e2af"
+blue    = "#89b4fa"
+magenta = "#f5c2e7"
+cyan    = "#94e2d5"
+white   = "#a6adc8"
 
 [[keyboard.bindings]]
 key = "Return"
